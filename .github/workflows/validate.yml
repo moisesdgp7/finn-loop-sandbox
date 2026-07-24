@@ -1,0 +1,36 @@
+name: Validate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate sandbox files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if find . -maxdepth 2 \( -name 'package.json' -o -name '*.css' -o -name '*.js' \) | grep -q .; then
+            echo "Unexpected package, CSS, or JavaScript file found."
+            exit 1
+          fi
+
+          if [ -f index.html ]; then
+            visible_text="$(sed -E 's/<[^>]+>/ /g' index.html | tr -s '[:space:]' ' ' | sed -E 's/^ | $//g')"
+            if [ "$visible_text" != "July 24, 2026" ]; then
+              echo "Unexpected visible text: $visible_text"
+              exit 1
+            fi
+          fi
