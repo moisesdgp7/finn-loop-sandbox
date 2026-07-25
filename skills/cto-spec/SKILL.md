@@ -39,7 +39,28 @@ Could two different engineers read this issue and ship the same observable behav
 
 If not, ask another round. Never stop because the interview feels long. Stop as soon as the contract is clear.
 
-## 3. Draft the issue
+## 3. Resolve Linear Project routing
+
+Before drafting the final issue, determine whether the issue should be associated with a Linear Project.
+
+If the user explicitly names a project:
+
+1. Search existing Linear Projects in team `TEAM`.
+2. Use an exact project name match when exactly one exists.
+3. If there are multiple partial matches, no exact match, or any ambiguity, ask the user before assigning the issue to a Project.
+4. Never create a new Linear Project without explicit user confirmation in the current conversation.
+
+If the user does not mention a project, ask one concise routing question:
+
+```text
+Should this issue be associated with an existing/new Linear Project, or left without a Project?
+```
+
+If the user chooses an existing Project, search and confirm the match before filing. If the user chooses a new Project, create it only after explicit confirmation. If the user chooses no Project, file the issue without a Project and record that decision in the issue body.
+
+Project routing is optional. Do not block a clear, small issue only because it has no Project.
+
+## 4. Draft the issue
 
 Use this shape exactly:
 
@@ -47,6 +68,12 @@ Use this shape exactly:
 ## Problem
 
 What user, business, or engineering problem does this solve? One or two sentences.
+
+## Project Context
+
+- Linear project: Project name, newly created Project name, or None.
+- Decision source: User named existing Project / user confirmed new Project / user chose no Project.
+- Why this belongs here: One sentence, or N/A when Linear project is None.
 
 ## Acceptance Criteria
 
@@ -85,14 +112,15 @@ Rules:
 - Every acceptance criterion must have a stable `AC-N` id.
 - Every non-goal must have a stable `NG-N` id.
 - No AC may require violating an NG.
+- Every issue must include `## Project Context`, even when `Linear project: None`.
 - Size the issue to one day of agent work or less. Split larger work into ordered issues.
 - Include CodeRabbit requirements only when the review policy should treat the future PR as risk-bearing.
 
-## 4. Confirm and file
+## 5. Confirm and file
 
 Show the full draft in chat and get the user's go-ahead before creating the Linear issue.
 
-Create the issue on team `TEAM` only after approval. Report the issue identifier and URL.
+Create the issue on team `TEAM` only after approval. If a Project was selected or created, assign the issue to that Project when filing it. Report the issue identifier, URL, and Project assignment.
 
 ## Hard rule
 
