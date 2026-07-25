@@ -1,0 +1,4 @@
+interface:
+  display_name: "CTO Review"
+  short_description: "Review CTO PRs with CodeRabbit policy"
+  default_prompt: "Use $cto-review to review a CTO pull request against Linear, CI, diff evidence, and CodeRabbit findings."
