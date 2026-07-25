@@ -13,6 +13,7 @@ Date: 2026-07-24
   - `skills/cto-build`
   - `skills/cto-review`
   - `skills/cto-merge` from source commit `34f9cea3e0f5aa99e033e8a77456335b5d96a9e5`
+  - `skills/cto-spec` refreshed from source commit `372c70f66e323cef2e1cd65da3db3412410d0c09`
 
 ## Destination
 
@@ -56,6 +57,7 @@ python "C:\Users\Moises Gale\.codex\skills\.system\skill-creator\scripts\quick_v
 - `cto-build`: `Skill is valid!`
 - `cto-review`: `Skill is valid!`
 - `cto-merge`: `Skill is valid!`
+- `cto-spec` refreshed from source commit `372c70f66e323cef2e1cd65da3db3412410d0c09`: `Skill is valid!`
 
 ## Source match results
 
@@ -69,6 +71,7 @@ The installed local files were compared against the repository source files with
 - `cto-review` `agents\openai.yaml`: match
 - `cto-merge` `SKILL.md`: match
 - `cto-merge` `agents\openai.yaml`: match
+- `cto-spec` refreshed `SKILL.md`: match
 
 ## Preserved installed skills
 
