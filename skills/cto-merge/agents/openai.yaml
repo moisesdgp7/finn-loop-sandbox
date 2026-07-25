@@ -1,0 +1,4 @@
+interface:
+  display_name: "CTO Merge"
+  short_description: "Merge approved CTO PRs safely"
+  default_prompt: "Use $cto-merge to recheck an approved PR, merge it after my explicit authorization, sync main, and move the linked Linear issue to Done."
