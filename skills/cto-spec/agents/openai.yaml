@@ -1,0 +1,4 @@
+interface:
+  display_name: "CTO Spec"
+  short_description: "Draft CTO build-ready Linear issues"
+  default_prompt: "Use $cto-spec to interview me and draft a CTO build-ready Linear issue."
