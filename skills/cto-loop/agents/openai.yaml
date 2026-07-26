@@ -1,4 +1,4 @@
 interface:
   display_name: "CTO Loop"
-  short_description: "Coordinate Codex build and review passes"
-  default_prompt: "Use $cto-loop to run one bounded CTO build-review pass."
+  short_description: "Repeat bounded CTO Build or Review passes"
+  default_prompt: "Use $cto-loop in build or review mode with an explicit pass limit or stop condition."
