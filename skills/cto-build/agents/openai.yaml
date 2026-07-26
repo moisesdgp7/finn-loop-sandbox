@@ -1,4 +1,4 @@
 interface:
   display_name: "CTO Build"
-  short_description: "Build one approved CTO issue or repair one PR"
-  default_prompt: "Use $cto-build to claim the next approved CTO issue, implement it, verify it, and open a PR."
+  short_description: "Build one issue routed to the current repository"
+  default_prompt: "Use $cto-build to claim the next approved issue routed to this repository, implement it, verify it, and open a PR."

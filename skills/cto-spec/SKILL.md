@@ -33,17 +33,35 @@ After each round, apply this confidence test:
 If any fork remains, ask another round. Stop as soon as the test passes. Never
 guess product decisions or add filler questions.
 
-## 3. Resolve the Linear Project
+## 3. Resolve the Project and repository route
 
-Project routing is optional metadata and does not change the issue-body shape.
+A repository-changing issue must have one Linear Project with one canonical
+route in its description:
 
-- If the user names a Project, search the team `TEAM` Projects and assign the
-  exact unique match.
-- If the name is ambiguous or missing, ask one concise routing question.
-- Create a new Project only after explicit user confirmation.
-- If the user chooses no Project, file the issue without one.
+```text
+CTO GitHub repository: owner/repo
+```
 
-Do not block a clear small issue merely because it has no Project.
+This route identifies the GitHub repository, not a machine-specific checkout.
+It does not change the issue-body shape.
+
+- Detect the current repository, when available, from
+  `git remote get-url origin`, then resolve that remote with
+  `gh repo view ORIGIN_URL --json nameWithOwner --jq .nameWithOwner`.
+- If the user names a Project, search team `TEAM` and require one exact match.
+- Fetch the full Project description. Accept exactly one valid
+  `CTO GitHub repository: owner/repo` line.
+- If the route is missing and the current repository is known, propose that
+  repository and get explicit confirmation before updating the Project.
+- If the configured route and current repository differ, stop and ask which
+  one is authoritative. Never silently replace the route.
+- Create a new Linear Project only after explicit user confirmation.
+- Do not create a repository. Repository provisioning is a separate,
+  explicitly authorized setup action.
+
+Administrative issues that do not change a repository may omit the Project
+and route. A repository-changing issue is not build-ready until its Project
+has a valid route.
 
 ## 4. Draft the issue
 
@@ -91,9 +109,11 @@ Rules:
 
 Show the full draft and get the user's approval. Then create the issue on team
 `TEAM` through Linear, assigning the selected Project when applicable. Report
-the exact issue identifier, URL, and Project assignment.
+the exact issue identifier, URL, Project assignment, and configured repository
+route.
 
 ## Hard rule
 
 Never apply `agent-ready`. The user applies it in Linear after a final read.
 That label is the approval gate between a drafted idea and agent execution.
+Never create or rename a GitHub repository from CTO Spec.

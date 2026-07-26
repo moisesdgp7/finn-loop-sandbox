@@ -1,4 +1,4 @@
 interface:
   display_name: "CTO Spec"
-  short_description: "Turn ideas into build-ready Linear issues"
-  default_prompt: "Use $cto-spec to interview me, route the work to the right Linear Project, and draft a build-ready issue."
+  short_description: "Route ideas to the correct Project and repository"
+  default_prompt: "Use $cto-spec to interview me, verify the Linear Project repository route, and draft a build-ready issue."

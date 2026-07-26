@@ -34,3 +34,7 @@ jobs:
               exit 1
             fi
           fi
+
+      - name: Validate CTO repository routing contract
+        shell: pwsh
+        run: ./tests/validate-cto-repository-routing.ps1

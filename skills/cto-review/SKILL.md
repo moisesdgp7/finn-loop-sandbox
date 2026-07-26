@@ -17,9 +17,11 @@ gh pr list --state open --json number,title,labels,isDraft,headRefOid,updatedAt,
 Skip drafts. For each PR, find the latest comment whose first line is
 `CTO-loop review of COMMIT_SHA`.
 
-Skip a PR when that SHA equals its current `headRefOid` and it already has
+Fetch the linked issue's current Linear Project and repository route before
+deciding to skip. Skip a PR only when the recorded SHA, Project ID, and
+repository route still match the live values and it already has
 `loop-approved`, `loop-changes-requested`, or `needs-human-review`. Review it
-again when new commits landed after the recorded SHA.
+again when the commit, Project, or route changed.
 
 If nothing needs review, say so and end the pass.
 
@@ -28,6 +30,14 @@ If nothing needs review, say so and end the pass.
 - Parse exactly one linked issue identifier from `Closes TEAM-NNN` in the PR
   body and fetch the full Linear issue, comments, and relations.
 - Treat a missing or ambiguous linked issue as a must-fix finding.
+- Resolve the current repository from `git remote get-url origin` with
+  `gh repo view ORIGIN_URL --json nameWithOwner --jq .nameWithOwner`.
+- Fetch the issue's Linear Project and full Project description. Require
+  exactly one `CTO GitHub repository: owner/repo` line and compare it
+  case-insensitively with the current repository.
+- Treat a missing Project, missing or ambiguous route, or repository mismatch
+  as `[ROUTING]` and escalate to human review. Never infer the repository from
+  a branch, issue title, or local folder.
 - Read the full diff and every changed file in context.
 - Review only against the linked issue: acceptance-criteria gaps, defects,
   broken data flow, unnecessary scope expansion, security problems, missing
@@ -40,6 +50,7 @@ Start every must-fix finding with one of:
 - `[DEFECT]` - the implementation is broken within the approved scope;
 - `[SECURITY]` - a severe security issue blocks shipping;
 - `[CI]` - a required GitHub check failed.
+- `[ROUTING]` - the Linear Project does not identify this repository exactly.
 
 Non-goals are binding. If a fix would require behavior excluded by an `NG-N`,
 record `[SCOPE-CONFLICT AC-N <-> NG-N]`, explain the contradiction, and
@@ -71,6 +82,8 @@ Post one comment in this structure:
 ```md
 CTO-loop review of COMMIT_SHA
 
+Linear Project: PROJECT_ID | PROJECT_NAME
+Repository route: owner/repo
 CI: required checks passed | failed | not configured
 Mergeability: clean | conflicting
 
@@ -97,9 +110,10 @@ Set labels from the verdict:
   `loop-changes-requested`. Preserve a pre-existing `needs-human-review`
   because it may represent a separate human gate.
 - Must-fix present: add `loop-changes-requested`; remove `loop-approved`.
-- Scope conflict or no required CI: add `needs-human-review`; remove both
-  `loop-approved` and `loop-changes-requested`; set Safe to merge to
-  `No - human decision required.`
+- Scope conflict, routing failure, or no required CI: add
+  `needs-human-review`; remove both `loop-approved` and
+  `loop-changes-requested`; set Safe to merge to `No - human decision
+  required.`
 
 A human must resolve the escalation and remove `needs-human-review` before the
 unchanged commit returns to the automated review queue.

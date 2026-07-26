@@ -12,16 +12,43 @@ end to end. Repeated runners invoke this skill once per iteration.
 
 Before changing Linear, GitHub, branches, or files:
 
-- Confirm this is the intended GitHub repository and `origin` is reachable.
+- Read `git remote get-url origin`, confirm it is reachable, and resolve that
+  exact remote with
+  `gh repo view ORIGIN_URL --json nameWithOwner,defaultBranchRef`.
+- Use the returned `nameWithOwner` as the canonical current repository. Do not
+  use another remote or an ambient GitHub repository.
 - Detect the default branch with
-  `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`; never
-  assume it is `main`.
+  `defaultBranchRef.name`; never assume it is `main`.
 - Require a clean working tree (`git status --porcelain` must be empty). If it
   is dirty, report the paths and end the pass.
 
 Never stash, reset, overwrite, or commit unrelated work.
 
-## 1. Review feedback first
+## 1. Repository routing gate
+
+Before assigning an issue, changing its state, checking out a PR branch, or
+editing files:
+
+1. Fetch the issue's Linear Project and full Project description.
+2. Parse exactly one line shaped
+   `CTO GitHub repository: owner/repo`.
+3. Require that route to exactly match the current repository's canonical
+   `owner/repo`, comparing case-insensitively.
+
+A candidate is eligible only when its configured route exactly matches the
+current repository.
+
+If the issue has no Project, the route is missing, malformed, or ambiguous, or
+the configured route does not exactly match the current repository, do not
+claim or modify the issue or PR. Skip it and report the issue identifier,
+Project, expected repository when known, and current repository. Never infer
+routing from the issue title, branch, or local folder.
+
+Re-run this gate immediately before the first file edit and immediately before
+every push. If routing changed, stop without pushing or changing Linear or
+GitHub state and report the new routing evidence.
+
+## 2. Review feedback first
 
 List open PRs labeled `loop-changes-requested`:
 
@@ -29,19 +56,23 @@ List open PRs labeled `loop-changes-requested`:
 gh pr list --state open --label loop-changes-requested --json number,title,headRefName,headRefOid,labels,updatedAt,url
 ```
 
-Skip every PR carrying `needs-human-review`. If any safe PR remains, choose the
-least recently updated one.
+Skip every PR carrying `needs-human-review`. Parse exactly one
+`Closes TEAM-NNN` from each remaining PR body. A PR with zero or multiple
+linked issues is ineligible: skip it without checkout, edits, comments, label
+changes, or pushes. If any safe PR remains, choose the least recently updated
+one.
 
 Read its linked Linear issue and latest `CTO-loop review of COMMIT_SHA`
-verdict. Check out the existing branch, fix only the "Must fix before merge"
-items, run the relevant checks, push to the same branch, remove
-`loop-changes-requested`, and comment with the repair evidence. End the pass.
+verdict. Apply the repository routing gate before selecting a repair. Check out
+the existing branch, fix only the "Must fix before merge" items, run the
+relevant checks, push to the same branch, remove `loop-changes-requested`, and
+comment with the repair evidence. End the pass.
 
 If a fix would cross an issue non-goal or require a product decision, comment
 the exact conflict, add `needs-human-review`, remove
 `loop-changes-requested`, and end the pass.
 
-## 2. Pick
+## 3. Pick
 
 Using Linear, list issues on team `TEAM` that meet every condition:
 
@@ -50,29 +81,37 @@ Using Linear, list issues on team `TEAM` that meet every condition:
 - not labeled `blocked`;
 - no unresolved blocker relation.
 
-Sort by priority, then oldest first. If the queue is empty, say so and end the
-pass. Do not invent work or pick a blocked issue.
+Apply the repository routing gate to every candidate before sorting or
+claiming. Only candidates whose configured route exactly matches the current
+repository are eligible. Sort eligible issues by priority, then oldest first.
 
-## 3. Claim
+If no eligible issue remains, report an empty routable queue plus the skipped
+issue identifiers and routing reasons, then end the pass. Do not invent work,
+pick a blocked issue, or claim an issue routed to another repository.
+
+## 4. Claim
 
 Assign yourself and move the issue to the team's started workflow state,
-preferring `In Progress`. Claim before reading deeply or writing code.
+preferring `In Progress`. Record its previous state, then claim before reading
+deeply or writing code.
 
 Re-fetch the issue immediately. If it is blocked, assigned to somebody else,
-or no longer `agent-ready`, do not work it and return to step 2.
+no longer `agent-ready`, or its Project route no longer matches, do not work
+it. When this pass made the assignment, unassign it and restore its previous
+workflow state, then return to step 3.
 
 The assignee is a cooperative lock. Run only one builder loop per Linear team.
 
-## 4. Read
+## 5. Read
 
 Fetch the full issue, comments, and relations. Implement only its acceptance
 criteria. Non-goals are binding. Compare every `AC-N` against every `NG-N`
 before editing. Do not make unrelated changes or opportunistic refactors.
 
 If an AC is ambiguous, conflicts with an NG, or depends on an unresolved
-blocker, go to step 8. Never guess.
+blocker, go to step 9. Never guess.
 
-## 5. Build
+## 6. Build
 
 - Fetch the latest default branch from `origin`.
 - Create or resume `TEAM-NNN-short-slug`, using the real issue identifier.
@@ -81,7 +120,7 @@ blocker, go to step 8. Never guess.
   integrations, or user-visible behavior.
 - Preserve behavior outside the issue contract.
 
-## 6. Verify
+## 7. Verify
 
 Run the project's relevant lint, typecheck, build, and narrowest useful tests.
 All failures attributable to the change must be resolved before opening a PR.
@@ -92,7 +131,7 @@ targeted check and disclose both results in the PR.
 Review `git diff` and `git status` before shipping. Stop if the diff contains
 unrelated work or generated secrets.
 
-## 7. Ship
+## 8. Ship
 
 Push and open a PR whose description includes:
 
@@ -111,7 +150,7 @@ Comment the PR URL on the Linear issue. Move it to the team's review state
 when available; otherwise leave it started for the Linear-GitHub integration.
 Never merge or enable auto-merge. End the pass.
 
-## 8. Blocked
+## 9. Blocked
 
 Comment one specific question a human can answer asynchronously, apply
 `blocked`, and unassign yourself. Leave `agent-ready` in place because the
