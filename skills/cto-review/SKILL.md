@@ -1,126 +1,127 @@
 ---
 name: cto-review
-description: Review CTO-loop pull requests against Linear AC/NG, GitHub required checks, diff evidence, CodeRabbit findings, and CTO risk policy. Use when the user asks for CTO Review, direct PR review, merge-readiness assessment, or a Finn-loop style verdict with CodeRabbit-aware escalation.
+description: Use when an open CTO-loop pull request needs an independent verdict against its linked Linear contract, current diff, required GitHub checks, and mergeability.
 ---
 
 # CTO Review
 
-Review one open PR against its linked Linear issue and CTO risk policy. This skill is based on Finn-loop review, with CodeRabbit-aware evidence handling and an independent verification mindset.
-
-This skill is read-only by default. Never merge, enable auto-merge, push commits, or submit a formal GitHub approval/request-changes review.
+One pass reviews one PR. Repeated runners invoke this skill once per
+iteration. Never merge or push code from the review phase.
 
 ## 1. Find a PR needing review
 
-List open PRs and skip drafts. For each PR, identify the current head SHA and latest CTO or Finn-loop verdict comment.
+```bash
+gh pr list --state open --json number,title,labels,isDraft,headRefOid,updatedAt,url
+```
 
-Review a PR when:
+Skip drafts. For each PR, find the latest comment whose first line is
+`CTO-loop review of COMMIT_SHA`.
 
-- it has no current verdict for the head SHA;
-- new commits landed after the latest verdict;
-- the user explicitly asks for direct CTO review.
+Fetch the linked issue's current Linear Project and repository route before
+deciding to skip. Skip a PR only when the recorded SHA, Project ID, and
+repository route still match the live values and it already has
+`loop-approved`, `loop-changes-requested`, or `needs-human-review`. Review it
+again when the commit, Project, or route changed.
 
-## 2. Read the contract and diff
+If nothing needs review, say so and end the pass.
 
-- Parse the linked Linear issue from `Closes TEAM-NNN` in the PR body.
-- Fetch the full issue including comments and relations.
-- Read the full PR diff and every changed file in context.
-- Review only against the linked issue, required checks, security, scope, and maintainability risks introduced by the diff.
+## 2. Read the contract and code
 
-Every blocking finding must start with one of:
+- Parse exactly one linked issue identifier from `Closes TEAM-NNN` in the PR
+  body and fetch the full Linear issue, comments, and relations.
+- Treat a missing or ambiguous linked issue as a must-fix finding.
+- Resolve the current repository from `git remote get-url origin` with
+  `gh repo view ORIGIN_URL --json nameWithOwner --jq .nameWithOwner`.
+- Fetch the issue's Linear Project and full Project description. Require
+  exactly one `CTO GitHub repository: owner/repo` line and compare it
+  case-insensitively with the current repository.
+- Treat a missing Project, missing or ambiguous route, or repository mismatch
+  as `[ROUTING]` and escalate to human review. Never infer the repository from
+  a branch, issue title, or local folder.
+- Read the full diff and every changed file in context.
+- Review only against the linked issue: acceptance-criteria gaps, defects,
+  broken data flow, unnecessary scope expansion, security problems, missing
+  loading/error states, and code future agents will struggle to modify.
+- Do not suggest unrelated improvements unless they are severe.
 
-- `[AC-N]` - the PR does not satisfy that acceptance criterion.
-- `[DEFECT]` - the implementation is broken while staying inside scope.
-- `[SECURITY]` - a severe security issue blocks shipping.
-- `[CI]` - a required GitHub check failed or is missing.
-- `[SCOPE-CONFLICT AC-N <-> NG-N]` - fixing the issue requires violating a non-goal or product decision.
-- `[CODERABBIT]` - CodeRabbit found a blocking issue that CTO Review confirms as material.
+Start every must-fix finding with one of:
 
-Do not block on unrelated improvements unless they are severe.
+- `[AC-N]` - the PR does not satisfy that acceptance criterion;
+- `[DEFECT]` - the implementation is broken within the approved scope;
+- `[SECURITY]` - a severe security issue blocks shipping;
+- `[CI]` - a required GitHub check failed.
+- `[ROUTING]` - the Linear Project does not identify this repository exactly.
 
-## 3. Check GitHub evidence
+Non-goals are binding. If a fix would require behavior excluded by an `NG-N`,
+record `[SCOPE-CONFLICT AC-N <-> NG-N]`, explain the contradiction, and
+escalate to a human instead of prescribing code.
 
-Inspect:
+## 3. Check merge evidence
 
-- PR head SHA;
-- mergeability and merge state;
-- required GitHub checks;
-- labels;
-- linked issue identifier and PR body scope ledger.
+Inspect the current head, mergeability, and required checks:
 
-If required checks are pending or mergeability is unknown, report waiting and do not post a final verdict.
+```bash
+gh pr view NUMBER --json headRefOid,mergeable,mergeStateStatus
+gh pr checks NUMBER --required --json bucket,name,state,link
+```
 
-If there are no required checks for a code-bearing PR, escalate to human review.
+- If required checks are pending or mergeability is unknown, report waiting
+  and end without posting a verdict or changing labels.
+- Failed required checks are `[CI]` must-fix findings.
+- A merge conflict is a `[DEFECT]` must-fix finding.
+- If the repository has no required checks, escalate to human review and do
+  not apply `loop-approved`.
 
-## 4. Apply CodeRabbit evidence policy
+Review the exact `headRefOid` used for the evidence. Re-fetch it immediately
+before posting. If it changed, discard the review and retry on a future pass.
 
-Classify the PR:
+## 4. Post one verdict
 
-CodeRabbit evidence is required when the PR changes:
-
-- production code;
-- tests;
-- auth, security, permissions, payments, secrets, infra, CI, deployment, or release flow;
-- architecture, shared modules, public APIs, data models, migrations, or integrations;
-- any Medium or High risk issue.
-
-CodeRabbit evidence is optional when the PR is:
-
-- docs-only;
-- comments-only;
-- metadata-only;
-- low-risk skill text or process documentation with no executable path;
-- explicitly exempted by the Linear issue and PR body.
-
-When required:
-
-1. Look for CodeRabbit comments, summaries, or review output on the PR.
-2. Read every actionable CodeRabbit finding.
-3. Classify each as blocking, human decision, advisory, duplicate, stale, or out of scope.
-4. If required CodeRabbit evidence is missing, do not automatically approve. Escalate to human review unless the user explicitly waives the requirement for this PR.
-
-CodeRabbit is evidence, not authority. CTO Review owns the verdict; the human owns the merge.
-
-## 5. Verdict
-
-Post one comment:
+Post one comment in this structure:
 
 ```md
-CTO review of COMMIT_SHA
+CTO-loop review of COMMIT_SHA
 
-CI: required checks passed | failed | pending | not configured
-Mergeability: clean | conflicting | unknown
-CodeRabbit: required-present | required-missing | optional-present | optional-missing | not applicable
+Linear Project: PROJECT_ID | PROJECT_NAME
+Repository route: owner/repo
+CI: required checks passed | failed | not configured
+Mergeability: clean | conflicting
 
 ## Review
 
-Summary: one or two sentences.
+Summary: one or two plain-language sentences on what this PR does.
 
 ## 1. Must fix before merge
 
-None. | Findings.
+None.
 
 ## 2. Should fix soon
 
-None. | Advisory findings.
+None.
 
 ## 3. Safe to merge
 
-Yes - evidence is complete and a human still makes the merge decision.
-No - changes requested.
-No - human decision required.
+Yes - automated review evidence is complete. A human still makes the merge decision.
 ```
 
-Label policy:
+Set labels from the verdict:
 
-- No must-fix and no escalation: add `loop-approved`; remove `loop-changes-requested`.
+- No must-fix and no new escalation: add `loop-approved`; remove
+  `loop-changes-requested`. Preserve a pre-existing `needs-human-review`
+  because it may represent a separate human gate.
 - Must-fix present: add `loop-changes-requested`; remove `loop-approved`.
-- Scope conflict, missing required CodeRabbit evidence, no required CI for code-bearing PR, or unresolved product decision: add `needs-human-review`; remove both `loop-approved` and `loop-changes-requested`.
+- Scope conflict, routing failure, or no required CI: add
+  `needs-human-review`; remove both `loop-approved` and
+  `loop-changes-requested`; set Safe to merge to `No - human decision
+  required.`
 
-Preserve a pre-existing `needs-human-review` label unless the current review explicitly resolves that reason.
+A human must resolve the escalation and remove `needs-human-review` before the
+unchanged commit returns to the automated review queue.
 
-## 6. Hard limits
+## 5. Hard limits
 
 - Never merge or enable auto-merge.
 - Never push commits to the PR branch.
-- Never change labels without evidence tied to the current head SHA.
-- Never treat CodeRabbit as a substitute for reading the Linear issue, diff, and required checks.
+- Never approve or request changes through a formal GitHub review. Use one
+  comment plus labels because GitHub rejects self-reviews.
+- Treat `loop-approved` as evidence for a human, not merge authorization.

@@ -1,5 +1,11 @@
 # CTO Finn-loop architecture evaluation
 
+> Historical evaluation. Its plugin-composition recommendation was superseded
+> by CTO Loop Lite V2 after real workflow testing. The active core is
+> `cto-spec`, `cto-build`, `cto-review`, and the thin `cto-loop` runner, with no
+> Engineering Guardrails, Superpowers, or CodeRabbit dependency. `cto-merge`
+> remains an optional, explicitly human-authorized post-loop action.
+
 Linear issue: TEAM-6
 
 Date: 2026-07-24
